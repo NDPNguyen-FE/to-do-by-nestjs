@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, UsePipes, ValidationPipe, ParseIntPipe, DefaultValuePipe, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, UsePipes, ValidationPipe, ParseIntPipe, DefaultValuePipe, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator, Request } from '@nestjs/common';
 import { TodoService } from './todo.service';
 import { Todo } from './todo.entity';
 import { AuthGuard } from '@nestjs/passport';
@@ -31,7 +31,6 @@ export class TodoController {
             },
         }),
     }))
-    @UsePipes(new ValidationPipe({ transform: true }))
     create(
         @Body() createTodoDto: CreateTodoDto,
         @UploadedFile(
@@ -42,12 +41,13 @@ export class TodoController {
                 ],
                 fileIsRequired: false,
             }),
-        ) file?: Express.Multer.File,
+        ) file: Express.Multer.File,
+        @Request() req,
     ): Promise<Todo> {
         if (file) {
-            return this.todoService.create({ ...createTodoDto, file_path: file.path });
+            return this.todoService.create({ ...createTodoDto, file_path: file.path }, req.user);
         }
-        return this.todoService.create(createTodoDto);
+        return this.todoService.create(createTodoDto, req.user);
     }
 
     @Delete(':id')

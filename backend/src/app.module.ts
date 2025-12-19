@@ -8,7 +8,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TodoModule } from './todo/todo.module';
 import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 import { Todo } from './todo/todo.entity';
+import { User } from './users/user.entity';
 
 @Module({
   imports: [
@@ -29,8 +31,8 @@ import { Todo } from './todo/todo.entity';
         username: configService.get<string>('DB_USERNAME', 'root'),
         password: configService.get<string>('DB_PASSWORD', 'root'),
         database: configService.get<string>('DB_DATABASE', 'todo_db'),
-        entities: [Todo],
-        synchronize: false,
+        entities: [Todo, User],
+        synchronize: true,
         migrations: ['dist/migrations/*.js'],
         migrationsRun: true,
       }),
@@ -38,6 +40,7 @@ import { Todo } from './todo/todo.entity';
     }),
     TodoModule,
     AuthModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

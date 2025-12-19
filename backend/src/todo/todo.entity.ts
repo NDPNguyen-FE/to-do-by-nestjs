@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from '../users/user.entity';
 
 @Entity()
 export class Todo {
@@ -22,4 +23,11 @@ export class Todo {
 
     @Column({ nullable: true })
     file_path: string;
+
+    @ManyToOne(() => User, (user) => user.todos)
+    @JoinColumn({ name: 'user_id' })
+    user: User;
+
+    @Column({ nullable: true })
+    user_id: number;
 }

@@ -21,10 +21,12 @@ const Todo: React.FC = () => {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const fetchTodos = async () => {
         setLoading(true);
+        setError(null);
         try {
             const response = await api.get(`/todo?page=${page}&limit=5`);
             if (response.data && Array.isArray(response.data.data)) {
@@ -34,8 +36,12 @@ const Todo: React.FC = () => {
                 setTodos([]);
             }
         } catch (error) {
-            if (axios.isAxiosError(error) && error.response?.status === 401) {
-                navigate('/');
+            if (axios.isAxiosError(error)) {
+                if (error.response?.status === 401) {
+                    navigate('/');
+                } else {
+                    setError(error.message || 'Failed to fetch todos');
+                }
             }
         } finally {
             setLoading(false);
@@ -44,12 +50,11 @@ const Todo: React.FC = () => {
 
     useEffect(() => {
         fetchTodos();
-        const interval = setInterval(fetchTodos, 5000);
-        return () => clearInterval(interval);
     }, [page]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
         try {
             const formData = new FormData();
             formData.append('title', title);
@@ -60,27 +65,32 @@ const Todo: React.FC = () => {
                 formData.append('file', file);
             }
 
-            await api.post('/todo', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            await api.post('/todo', formData);
             setTitle('');
             setDesc('');
             setTime('');
             setFile(null);
             fetchTodos();
         } catch (error) {
-            alert('Failed to create todo');
+            if (axios.isAxiosError(error)) {
+                setError(error.response?.data?.message || 'Failed to create todo');
+            } else {
+                setError('Failed to create todo');
+            }
         }
     };
 
     const handleDelete = async (id: number) => {
+        setError(null);
         try {
             await api.delete(`/todo/${id}`);
             fetchTodos();
         } catch (error) {
-            alert('Failed to delete todo');
+            if (axios.isAxiosError(error)) {
+                setError(error.response?.data?.message || 'Failed to delete todo');
+            } else {
+                setError('Failed to delete todo');
+            }
         }
     };
 
@@ -101,6 +111,16 @@ const Todo: React.FC = () => {
                         Logout
                     </button>
                 </div>
+
+                {error && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                        <strong className="font-bold">Error! </strong>
+                        <span className="block sm:inline">{error}</span>
+                        <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
+                            <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" /></svg>
+                        </span>
+                    </div>
+                )}
 
                 <form onSubmit={handleCreate} className="bg-white p-6 rounded-lg shadow-sm mb-8 flex flex-col gap-4">
                     <div className="flex flex-col md:flex-row gap-4">

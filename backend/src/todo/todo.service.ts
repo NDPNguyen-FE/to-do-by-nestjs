@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { Todo } from './todo.entity';
+import { User } from '../users/user.entity';
+import { CreateTodoDto } from './create-todo.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
@@ -15,7 +17,8 @@ export class TodoService {
         const [data, total] = await this.todoRepository.findAndCount({
             skip: (page - 1) * limit,
             take: limit,
-            order: { created_at: 'DESC' }
+            order: { created_at: 'DESC' },
+            relations: ['user'],
         });
         return { data, total, page, limit };
     }
@@ -24,12 +27,15 @@ export class TodoService {
         return this.todoRepository.findOneBy({ id });
     }
 
-    create(todo: any): Promise<Todo> {
-        return this.todoRepository.save(todo);
+    async create(createTodoDto: CreateTodoDto | (CreateTodoDto & { file_path: string }), user: User): Promise<Todo> {
+        return this.todoRepository.save({ ...createTodoDto, user });
     }
 
     async remove(id: number): Promise<void> {
-        await this.todoRepository.delete(id);
+        const result = await this.todoRepository.delete(id);
+        if (result.affected === 0) {
+            throw new NotFoundException(`Todo with ID ${id} not found`);
+        }
     }
 
     @Cron(CronExpression.EVERY_MINUTE)

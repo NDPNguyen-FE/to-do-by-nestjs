@@ -1,43 +1,41 @@
+version: '3.8'
+
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
     ports:
       - "3000:3000"
     environment:
+      - JWT_SECRET=${JWT_SECRET}
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USERNAME=root
       - DB_PASSWORD=root
       - DB_DATABASE=todo_db
-      - JWT_SECRET=super_secret_key_for_dev_only
     depends_on:
       mysql:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    command: npm run start:dev
+    # No volumes mounted for code! (Immutable)
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
     ports:
-      - "3001:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:3000
-    command: npm run dev -- --host
+      - "3001:80" # Nginx listens on 80 inside, exposed as 3001 outside
+    depends_on:
+      - backend
 
   mysql:
     image: mysql:8.0
-    ports:
-      - "3306:3306"
+    restart: always
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=todo_db
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_data_prod:/var/lib/mysql
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       interval: 5s
@@ -45,4 +43,4 @@ services:
       retries: 5
 
 volumes:
-  mysql_data:
+  mysql_data_prod: # Separate volume for production data
