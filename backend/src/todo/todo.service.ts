@@ -1,30 +1,30 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { Todo } from './todo.entity';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
-export class TodoService implements OnModuleInit {
+export class TodoService {
     constructor(
         @InjectRepository(Todo)
         private todoRepository: Repository<Todo>,
     ) { }
 
-    onModuleInit() {
-        setInterval(() => {
-            this.handleCron();
-        }, 60000);
-    }
-
-    findAll(): Promise<Todo[]> {
-        return this.todoRepository.find();
+    async findAll(page: number = 1, limit: number = 10): Promise<{ data: Todo[], total: number, page: number, limit: number }> {
+        const [data, total] = await this.todoRepository.findAndCount({
+            skip: (page - 1) * limit,
+            take: limit,
+            order: { created_at: 'DESC' }
+        });
+        return { data, total, page, limit };
     }
 
     findOne(id: number): Promise<Todo | null> {
         return this.todoRepository.findOneBy({ id });
     }
 
-    create(todo: Partial<Todo>): Promise<Todo> {
+    create(todo: any): Promise<Todo> {
         return this.todoRepository.save(todo);
     }
 
@@ -32,6 +32,7 @@ export class TodoService implements OnModuleInit {
         await this.todoRepository.delete(id);
     }
 
+    @Cron(CronExpression.EVERY_MINUTE)
     async handleCron() {
         const now = new Date();
         await this.todoRepository.update(

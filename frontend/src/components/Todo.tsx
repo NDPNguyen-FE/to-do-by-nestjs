@@ -9,6 +9,7 @@ interface TodoItem {
     description: string;
     is_active: boolean;
     time: string;
+    file_path?: string;
 }
 
 const Todo: React.FC = () => {
@@ -16,17 +17,28 @@ const Todo: React.FC = () => {
     const [title, setTitle] = useState('');
     const [desc, setDesc] = useState('');
     const [time, setTime] = useState('');
+    const [file, setFile] = useState<File | null>(null);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const fetchTodos = async () => {
+        setLoading(true);
         try {
-            const response = await api.get('/todo');
-            setTodos(response.data);
+            const response = await api.get(`/todo?page=${page}&limit=5`);
+            if (response.data && Array.isArray(response.data.data)) {
+                setTodos(response.data.data);
+                setTotalPages(Math.ceil(response.data.total / 5));
+            } else {
+                setTodos([]);
+            }
         } catch (error) {
-            console.error(error);
             if (axios.isAxiosError(error) && error.response?.status === 401) {
                 navigate('/');
             }
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -34,20 +46,29 @@ const Todo: React.FC = () => {
         fetchTodos();
         const interval = setInterval(fetchTodos, 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [page]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.post('/todo', {
-                title,
-                description: desc,
-                time: new Date(time).toISOString(),
-                is_active: true
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', desc);
+            formData.append('time', new Date(time).toISOString());
+            formData.append('is_active', 'true');
+            if (file) {
+                formData.append('file', file);
+            }
+
+            await api.post('/todo', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
             });
             setTitle('');
             setDesc('');
             setTime('');
+            setFile(null);
             fetchTodos();
         } catch (error) {
             alert('Failed to create todo');
@@ -81,47 +102,73 @@ const Todo: React.FC = () => {
                     </button>
                 </div>
 
-                <form onSubmit={handleCreate} className="bg-white p-6 rounded-lg shadow-sm mb-8 flex flex-col md:flex-row gap-4">
-                    <input
-                        type="text"
-                        placeholder="Title"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        required
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                        type="text"
-                        placeholder="Description"
-                        value={desc}
-                        onChange={(e) => setDesc(e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                        type="datetime-local"
-                        value={time}
-                        onChange={(e) => setTime(e.target.value)}
-                        required
-                        className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                        type="submit"
-                        className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-md transition duration-200"
-                    >
-                        Add Todo
-                    </button>
+                <form onSubmit={handleCreate} className="bg-white p-6 rounded-lg shadow-sm mb-8 flex flex-col gap-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <input
+                            type="text"
+                            placeholder="Title"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            required
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Description"
+                            value={desc}
+                            onChange={(e) => setDesc(e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <input
+                            type="datetime-local"
+                            value={time}
+                            onChange={(e) => setTime(e.target.value)}
+                            required
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                            type="file"
+                            onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                            type="submit"
+                            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-md transition duration-200"
+                        >
+                            Add Todo
+                        </button>
+                    </div>
                 </form>
 
-                <ul className="space-y-4">
-                    {todos.map((todo) => (
+                {loading && <p className="text-center text-gray-500">Loading todos...</p>}
+
+                <ul className="space-y-4 mb-8">
+                    {Array.isArray(todos) && todos.map((todo) => (
                         <li
                             key={todo.id}
-                            className={`bg-white p-6 rounded-lg shadow-sm flex justify-between items-center border-l-4 ${todo.is_active ? 'border-green-500' : 'border-red-500'
+                            className={`bg-white p-6 rounded-lg shadow-sm flex justify-between items-start border-l-4 ${todo.is_active ? 'border-green-500' : 'border-red-500'
                                 }`}
                         >
                             <div>
                                 <h3 className="text-xl font-bold text-gray-800">{todo.title}</h3>
                                 <p className="text-gray-600">{todo.description}</p>
+                                {todo.file_path && (
+                                    <div className="mt-2">
+                                        <a
+                                            href={`${import.meta.env.VITE_API_URL}/${todo.file_path}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-500 hover:underline text-sm flex items-center gap-1"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                            </svg>
+                                            View Attachment
+                                        </a>
+                                    </div>
+                                )}
                                 <div className="mt-2 text-sm">
                                     <span className={`font-semibold ${todo.is_active ? 'text-green-600' : 'text-red-600'}`}>
                                         {todo.is_active ? 'Active' : 'Expired/Inactive'}
@@ -142,6 +189,24 @@ const Todo: React.FC = () => {
                         </li>
                     ))}
                 </ul>
+
+                <div className="flex justify-center gap-4">
+                    <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300"
+                    >
+                        Previous
+                    </button>
+                    <span className="px-4 py-2">Page {page} of {totalPages}</span>
+                    <button
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300"
+                    >
+                        Next
+                    </button>
+                </div>
             </div>
         </div>
     );

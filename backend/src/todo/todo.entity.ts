@@ -19,4 +19,7 @@ export class Todo {
 
     @CreateDateColumn()
     created_at: Date;
+
+    @Column({ nullable: true })
+    file_path: string;
 }
