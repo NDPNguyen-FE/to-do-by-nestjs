@@ -12,6 +12,9 @@ import { UsersModule } from './users/users.module';
 import { Todo } from './todo/todo.entity';
 import { User } from './users/user.entity';
 
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -32,7 +35,7 @@ import { User } from './users/user.entity';
         password: configService.get<string>('DB_PASSWORD', 'root'),
         database: configService.get<string>('DB_DATABASE', 'todo_db'),
         entities: [Todo, User],
-        synchronize: true,
+
         migrations: ['dist/migrations/*.js'],
         migrationsRun: true,
       }),
@@ -43,6 +46,12 @@ import { User } from './users/user.entity';
     UsersModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule { }

@@ -18,5 +18,5 @@ export class User {
     todos: Todo[];
 
     @CreateDateColumn()
-    created_at: Date;
+    createdAt: Date;
 }

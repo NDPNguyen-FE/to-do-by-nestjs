@@ -7,9 +7,9 @@ interface TodoItem {
     id: number;
     title: string;
     description: string;
-    is_active: boolean;
+    isActive: boolean;
     time: string;
-    file_path?: string;
+    filePath?: string;
 }
 
 const Todo: React.FC = () => {
@@ -60,7 +60,7 @@ const Todo: React.FC = () => {
             formData.append('title', title);
             formData.append('description', desc);
             formData.append('time', new Date(time).toISOString());
-            formData.append('is_active', 'true');
+            formData.append('isActive', 'true');
             if (file) {
                 formData.append('file', file);
             }
@@ -168,16 +168,16 @@ const Todo: React.FC = () => {
                     {Array.isArray(todos) && todos.map((todo) => (
                         <li
                             key={todo.id}
-                            className={`bg-white p-6 rounded-lg shadow-sm flex justify-between items-start border-l-4 ${todo.is_active ? 'border-green-500' : 'border-red-500'
+                            className={`bg-white p-6 rounded-lg shadow-sm flex justify-between items-start border-l-4 ${todo.isActive ? 'border-green-500' : 'border-red-500'
                                 }`}
                         >
                             <div>
                                 <h3 className="text-xl font-bold text-gray-800">{todo.title}</h3>
                                 <p className="text-gray-600">{todo.description}</p>
-                                {todo.file_path && (
+                                {todo.filePath && (
                                     <div className="mt-2">
                                         <a
-                                            href={`${import.meta.env.VITE_API_URL}/${todo.file_path}`}
+                                            href={`${import.meta.env.VITE_API_URL}/${todo.filePath}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-blue-500 hover:underline text-sm flex items-center gap-1"
@@ -190,8 +190,8 @@ const Todo: React.FC = () => {
                                     </div>
                                 )}
                                 <div className="mt-2 text-sm">
-                                    <span className={`font-semibold ${todo.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                                        {todo.is_active ? 'Active' : 'Expired/Inactive'}
+                                    <span className={`font-semibold ${todo.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                                        {todo.isActive ? 'Active' : 'Expired/Inactive'}
                                     </span>
                                     <span className="text-gray-400 mx-2">•</span>
                                     <span className="text-gray-500">Expires: {new Date(todo.time).toLocaleString()}</span>

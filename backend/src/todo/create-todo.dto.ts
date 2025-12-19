@@ -1,24 +1,28 @@
-import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsDateString } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsDate } from 'class-validator';
+import { Transform, Type, Expose } from 'class-transformer';
 
 export class CreateTodoDto {
     @IsString()
     @IsNotEmpty()
+    @Transform(({ value }) => value?.trim())
     title: string;
 
     @IsString()
     @IsOptional()
+    @Transform(({ value }) => value?.trim())
     description?: string;
 
-    @IsDateString()
+    @Type(() => Date)
+    @IsDate()
     @IsNotEmpty()
-    time: string;
+    time: Date;
 
     @IsOptional()
+    @Expose({ name: 'is_active' })
     @Transform(({ value }) => {
         if (value === 'true' || value === true) return true;
         if (value === 'false' || value === false) return false;
         return value;
     })
-    is_active?: boolean;
+    isActive?: boolean;
 }

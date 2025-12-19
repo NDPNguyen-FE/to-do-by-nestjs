@@ -23,10 +23,13 @@ export class LoggingInterceptor implements NestInterceptor {
             .pipe(
                 tap((data) => {
                     const res = context.switchToHttp().getResponse();
-                    // Sanitize response data if needed (e.g., exclude password is handled by interceptor but good to be safe)
-                    // Note: 'data' here is the object returned by the controller
+                    // Truncate large responses to prevent memory issues
+                    let responseLog = JSON.stringify(data);
+                    if (responseLog && responseLog.length > 500) {
+                        responseLog = responseLog.slice(0, 500) + '... [TRUNCATED]';
+                    }
                     this.logger.log(
-                        `Request Completed: ${method} ${url} ${res.statusCode} ${Date.now() - now}ms | Response: ${JSON.stringify(data)}`,
+                        `Request Completed: ${method} ${url} ${res.statusCode} ${Date.now() - now}ms | Response: ${responseLog}`,
                     );
                 }),
             );

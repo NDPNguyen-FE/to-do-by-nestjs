@@ -1,26 +1,76 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, UsePipes, ValidationPipe, ParseIntPipe, DefaultValuePipe, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator, Request } from '@nestjs/common';
+import {
+    Controller,
+    Get,
+    Post,
+    Put,
+    Delete,
+    Body,
+    Param,
+    Query,
+    UseInterceptors,
+    UploadedFile,
+    ParseFilePipe,
+    MaxFileSizeValidator,
+    ParseIntPipe,
+    Request,
+    HttpCode,
+    HttpStatus,
+} from '@nestjs/common';
 import { TodoService } from './todo.service';
 import { Todo } from './todo.entity';
-import { AuthGuard } from '@nestjs/passport';
 import { CreateTodoDto } from './create-todo.dto';
+import { UpdateTodoDto } from './update-todo.dto';
+import { TodoQueryDto } from './todo-query.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { PaginatedResponse } from './todo.types';
 
 @Controller('todo')
-@UseGuards(AuthGuard('jwt'))
 export class TodoController {
     constructor(private readonly todoService: TodoService) { }
 
+    /**
+     * Get all todos with filtering and pagination
+     */
     @Get()
-    async findAll(
-        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-    ) {
-        return this.todoService.findAll(page, limit);
+    @HttpCode(HttpStatus.OK)
+    async findAll(@Query() query: TodoQueryDto, @Request() req): Promise<PaginatedResponse<Todo>> {
+        return this.todoService.findAll(query, req.user.id);
     }
 
+    /**
+     * Get statistics
+     */
+    @Get('stats/overview')
+    @HttpCode(HttpStatus.OK)
+    async getStatistics(@Request() req): Promise<{
+        total: number;
+        active: number;
+        expired: number;
+    }> {
+        return this.todoService.getStatistics(req.user.id);
+    }
+
+    /**
+     * Get a single todo by ID
+     */
+    @Get(':id')
+    @HttpCode(HttpStatus.OK)
+    async findOne(@Param('id', ParseIntPipe) id: number): Promise<Todo> {
+        return this.todoService.findOne(id);
+    }
+
+    /**
+     * Get a single todo by ID
+     */
+
+
+    /**
+     * Create a new todo
+     */
     @Post()
+    @HttpCode(HttpStatus.CREATED)
     @UseInterceptors(FileInterceptor('file', {
         storage: diskStorage({
             destination: './uploads',
@@ -31,27 +81,61 @@ export class TodoController {
             },
         }),
     }))
-    create(
+    async create(
         @Body() createTodoDto: CreateTodoDto,
         @UploadedFile(
             new ParseFilePipe({
                 validators: [
                     new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
-                    // Optional: new FileTypeValidator({ fileType: 'image/jpeg' }),
                 ],
                 fileIsRequired: false,
             }),
-        ) file: Express.Multer.File,
+        ) file: Express.Multer.File | undefined,
         @Request() req,
     ): Promise<Todo> {
         if (file) {
-            return this.todoService.create({ ...createTodoDto, file_path: file.path }, req.user);
+            return this.todoService.create(
+                { ...createTodoDto, filePath: file.path },
+                req.user
+            );
         }
         return this.todoService.create(createTodoDto, req.user);
     }
 
+    /**
+     * Update a todo
+     */
+    @Put(':id')
+    @HttpCode(HttpStatus.OK)
+    async update(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() updateTodoDto: UpdateTodoDto,
+        @Request() req,
+    ): Promise<Todo> {
+        return this.todoService.update(id, updateTodoDto, req.user.id);
+    }
+
+    /**
+     * Soft delete a todo (set isActive to false)
+     */
+    @Delete(':id/soft')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async softRemove(
+        @Param('id', ParseIntPipe) id: number,
+        @Request() req,
+    ): Promise<void> {
+        return this.todoService.softRemove(id, req.user.id);
+    }
+
+    /**
+     * Permanently delete a todo
+     */
     @Delete(':id')
-    remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-        return this.todoService.remove(id);
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async remove(
+        @Param('id', ParseIntPipe) id: number,
+        @Request() req,
+    ): Promise<void> {
+        return this.todoService.remove(id, req.user.id);
     }
 }

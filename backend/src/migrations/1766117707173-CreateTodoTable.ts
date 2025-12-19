@@ -25,7 +25,7 @@ export class CreateTodoTable1766117707173 implements MigrationInterface {
                         length: "500",
                     },
                     {
-                        name: "is_active",
+                        name: "isActive",
                         type: "boolean",
                         default: true,
                     },
@@ -34,7 +34,7 @@ export class CreateTodoTable1766117707173 implements MigrationInterface {
                         type: "datetime",
                     },
                     {
-                        name: "created_at",
+                        name: "createdAt",
                         type: "datetime",
                         default: "CURRENT_TIMESTAMP",
                     },
